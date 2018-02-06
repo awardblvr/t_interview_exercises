@@ -2,6 +2,7 @@
 
 # Form implementation generated from reading ui file 'gitLogView.ui'
 #
+# Andrew Ward - for T
 # Created by: PyQt5 UI code generator 5.9.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -10,12 +11,12 @@ import os
 import sys
 import subprocess
 from PyQt5 import QtCore, QtGui, QtWidgets
-import pprint
 from pygit2 import Repository
 from pygit2 import GIT_SORT_TOPOLOGICAL, GIT_SORT_REVERSE
 from PyQt5.QtGui import QStandardItemModel
 import datetime
 
+os.environ['PAGER'] = 'cat'
 # os.chdir("/Users/award/Source/Photon/Particle-NeoPixel")
 
 
@@ -77,8 +78,6 @@ class Ui_GitLogViewer(object):
                       "Open Directory", self.dirName)
 
         self.lineEdit.setText(self.dirName)
-
-        print(self.dirName)
             
     def viewIt(self):
         os.chdir(self.dirName)
@@ -86,24 +85,16 @@ class Ui_GitLogViewer(object):
         repo = Repository('.git')
 
         self.treeView.setRootIsDecorated(False)
-        model = self.createGLmodel(None)
-        self.treeView.setModel(model)
+        self.model = self.createGLmodel(None)
+        self.treeView.setModel(self.model)
 
         for idx, commit in enumerate(repo.walk(repo.head.target, GIT_SORT_TOPOLOGICAL)):
-            if idx > 10:
-                break
-            print("%s: %s (%s) [%s]" % (datetime.datetime.fromtimestamp(int(commit.commit_time)).strftime('%Y-%m-%d %H:%M:%S'),
-                                        commit.author.name,
-                                        commit.author.email,
-                                        commit.message.strip().replace('\n\n', '\n').replace('\n', ' ')))
-                                        # "".join(commit.message.strip())))
-
-            self.addCommit(model, 
+            self.addCommit(self.model, 
                            datetime.datetime.fromtimestamp(int(commit.commit_time)).strftime('%Y-%m-%d %H:%M:%S'),
                            commit.author.name,
                            commit.message.strip().replace('\n\n', '\n').replace('\n', ' '))
 
-        # tv = self.treeView()
+        self.treeView.clicked.connect(self.cellClick)
         
 
     def createGLmodel(self, parent):
@@ -121,7 +112,31 @@ class Ui_GitLogViewer(object):
         model.setData(model.index(0, self.AUTHOR), auth)
         model.setData(model.index(0, self.MESSAGE), msg)
  
+    def cellClick(self, itm_idx):
+        parent = self.model.itemFromIndex(itm_idx)
+        # print("Row %r,   Column %r" % (parent.row(), parent.column()))
+        msg_str = str(parent.data(role=QtCore.Qt.DisplayRole))
+        self.showdialog(msg_str) 
 
+     
+    def showdialog(self, user_info):
+        msg = QtWidgets.QMessageBox()
+        msg.setIcon(QtWidgets.QMessageBox.Information)
+
+        msg.setText("Details from commit:")
+        msg.setInformativeText(user_info)
+        # msg.setWindowTitle("Details...")
+        # msg.setDetailedText("The details are as follows:")
+        # msg.setStandardButtons(QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel)
+        msg.setStandardButtons(QtWidgets.QMessageBox.Ok)
+        msg.buttonClicked.connect(self.msgbtn)
+             
+        retval = msg.exec_()
+        # print("value of pressed message box button: %r"% (retval))
+            
+    def msgbtn(self, i):
+        print("Button pressed is: %s " % (i.text()))
+            
 
 if __name__ == "__main__":
     import sys
